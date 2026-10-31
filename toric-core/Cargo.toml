@@ -1,0 +1,17 @@
+[package]
+name = "toric-core"
+description = "Quantum state vector simulator"
+readme = "../README.md"
+keywords = ["quantum", "simulator", "error-correction", "qec"]
+categories = ["science", "simulation"]
+publish.workspace = true
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+# repository.workspace = true
+
+[dependencies]
+num-complex = { workspace = true }
+rand_chacha = { workspace = true }
+rand_core = { workspace = true }
