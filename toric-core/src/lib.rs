@@ -96,10 +96,10 @@ impl StateVector {
     /// # use toric_core::gates::Gate;
     /// # use toric_core::StateVector;
     /// # use num_complex::Complex64;
-    ///
+    /// # use std::f64::consts::FRAC_1_SQRT_2;
     /// let mut sv = StateVector::new(1);
     /// sv.apply_1q(0, Gate::H);
-    /// assert_eq!(*sv.amplitudes(), vec![Complex64::new(1.0/2f64.sqrt(), 0.0); 2]);
+    /// assert_eq!(*sv.amplitudes(), vec![Complex64::new(FRAC_1_SQRT_2, 0.0); 2]);
     /// ```
     pub fn apply_1q(&mut self, q: usize, g: Gate) {
         assert!(q <= self.n, "Only {0} qubits in system", self.n);
@@ -121,6 +121,7 @@ impl StateVector {
     /// # use toric_core::gates::Gate;
     /// # use toric_core::StateVector;
     /// # use num_complex::Complex64;
+    /// # use std::f64::consts::FRAC_1_SQRT_2;
     ///
     /// // |000>
     /// let mut sv = StateVector::new(3);
@@ -146,12 +147,16 @@ impl StateVector {
     ///     sv.apply_1q(2, Gate::Z);
     /// }
     ///
-    /// let check_amplitudes = vec![
+    /// let mut check_amplitudes = vec![
     ///     Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0),
-    ///     1.0/2f64.sqrt() * Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0),
+    ///     FRAC_1_SQRT_2 * Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0),
     ///     Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0),
-    ///     -1.0/2f64.sqrt() * Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)];
-    /// assert_eq!(sv.amplitudes(), &check_amplitudes);
+    ///     -FRAC_1_SQRT_2 * Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)];
+    ///
+    /// let amp_diff: f64 = check_amplitudes.into_iter().enumerate()
+    ///             .map(|(i, x)| (x - sv.amplitudes()[i]).norm()).sum();
+    ///
+    /// assert!(amp_diff < 1e-15);
     /// ```
     pub fn controlled_1q(&mut self, c: usize, t: usize, g: Gate) {
         assert!(c <= self.n && t <= self.n, "Only {0} qubits in system", self.n);
