@@ -113,8 +113,8 @@ impl StateVector {
             }
         }
     }
-    /// Applies the unitary operator to target qubit `t` if control qubit `c`
-    /// is 1 else does nothing.
+    /// Applies the 1-qubit gate `u` to target qubit `t` if control qubits `c`
+    /// are all 1 else does nothing.
     /// # Examples
     /// ```
     /// // Quantum teleportation for Hadamard state 1/sqrt(2) * (|0> + |1>)
@@ -132,9 +132,9 @@ impl StateVector {
     /// // 1/2 (|0> - |1>)(|00> + |10>)
     /// sv.apply_1q(1, Gate::H);
     /// // 1/2 (|0> - |1>)(|00> + |11>)
-    /// sv.controlled_1q(1, 2, Gate::X);
+    /// sv.controlled_gate(vec![1], 2, Gate::X);
     /// // 1/2 (|0> (|00> + |11>) - |1> (|10> + |01>))
-    /// sv.controlled_1q(0, 1, Gate::X);
+    /// sv.controlled_gate(vec![0], 1, Gate::X);
     /// // 1/sqrt(2)^3 (|00> (|0> - |1>) + |10> (|0> + |1>) + |01> (|1> - |0>) + |11> (|0> + |1>))
     /// sv.apply_1q(0, Gate::H);
     ///
@@ -158,10 +158,13 @@ impl StateVector {
     ///
     /// assert!(amp_diff < 1e-15);
     /// ```
-    pub fn controlled_1q(&mut self, c: usize, t: usize, g: Gate) {
-        assert!(c <= self.n && t <= self.n, "Only {0} qubits in system", self.n);
-        assert!(c != t, "Control qubit must differ from target qubit");
-        let c_mask = 1usize << c;
+    pub fn controlled_gate(&mut self, c: Vec<usize>, t: usize, g: Gate) {
+        assert!(t <= self.n, "Only {0} qubits in system", self.n);
+        for i in c.iter() {
+            assert!(*i != t, "Control qubit must differ from target qubit");
+            assert!(*i <= self.n, "Only {0} qubits in system", self.n);
+        }
+        let c_mask: usize = c.iter().map(|i| 1usize << i).sum();
         let t_mask = 1usize << t;
         let u = g.create_gate();
         for i in 0..self.amps.len() {
@@ -191,6 +194,7 @@ impl StateVector {
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::f64::consts::FRAC_1_SQRT_2;
 
     #[test]
     fn test_new_state_vector() {
@@ -216,8 +220,29 @@ mod test {
     fn test_controlled_cnot() {
         let mut sv = StateVector::basis(5, 1);
         let controlled_not_sv = StateVector::basis(5, 3);
-        sv.controlled_1q(0, 1, Gate::X);
+        sv.controlled_gate(vec![0], 1, Gate::X);
         assert!(sv.amps == controlled_not_sv.amps);
+    }
+    
+    #[test]
+    fn test_toffoli() {
+        let mut sv = StateVector::new(3);
+        sv.apply_1q(0, Gate::H);
+        sv.controlled_gate(vec![0], 1, Gate::X);
+        // Toffoli gate
+        sv.controlled_gate(vec![0, 1], 2, Gate::X);
+
+        let check_amps = vec![
+            Complex64::new(FRAC_1_SQRT_2, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(FRAC_1_SQRT_2, 0.0)
+        ];
+        assert!(sv.amps == check_amps);
     }
     
     #[test]

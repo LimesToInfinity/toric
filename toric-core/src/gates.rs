@@ -2,14 +2,23 @@ use num_complex::Complex64;
 use std::f64::consts::{PI, FRAC_1_SQRT_2};
 
 pub enum Gate {
+    /// Hadamard gate
     H,
+    /// Rotation gate around x-axis
     RX(f64),
+    /// Rotation gate around y-axis
     RY(f64),
+    /// Rotation gate around z-axis
     RZ(f64),
+    /// Phase gate
     S,
+    /// Square root of phase gate
     T,
+    /// Pauli X gate
     X,
+    /// Pauli Y gate
     Y,
+    /// Pauli Z gate
     Z,
 }
 
