@@ -52,7 +52,7 @@ impl StateVector {
     /// Measures qubit `q` in the Z-Basis and uses a random `seed` to collapse
     /// the state. Renormalizes the other states afterwards.
     pub fn measure(&mut self, q: usize, seed: u64) -> bool {
-        assert!(q <= Self::MAX_QUBITS, "Only {0} qubits in system", self.n);
+        assert!(q < self.n, "Only {0} qubits in system", self.n);
         let mask = 1usize << q;
         // Probability to measure qubit q in state 1
         let p1: f64 = self.amps.iter().enumerate()
@@ -90,7 +90,78 @@ impl StateVector {
         outcome
     }
 
-    /// Applies the gate `g` to qubit `q`.
+    /// Apply gate `g` to qubit `t` respecting the control mask `c_mask` built
+    /// from control qubits. The control mask represents which qubits have to
+    /// be in state `1` for the gate to be applied.
+    pub fn apply_1q_masked(&mut self, t: usize, c_mask: usize, g: Gate) {
+        assert!(t < self.n, "Only {0} qubits in system", self.n);
+        let t_mask = 1usize << t;
+        // Fast paths and general path
+        match g {
+            Gate::RZ(theta) => {
+                let z = Complex64::new(0.0, theta / 2.0).exp();
+                let z_c = z.conj();
+                for i in 0..self.amps.len() {
+                    if (i & t_mask == 0) && (i & c_mask == c_mask) {
+                        self.amps[i] *= z_c;
+                        self.amps[i | t_mask] *= z;
+                    }
+                }
+            }
+            Gate::S => {
+                let img = Complex64::new(0.0, 1.0);
+                for i in 0..self.amps.len() {
+                    if (i & t_mask == 0) && (i & c_mask == c_mask) {
+                        self.amps[i | t_mask] *= img;
+                    }
+                }
+            },
+            Gate::T => {
+                let z = Complex64::new(0.0, PI/4.0).exp();
+                for i in 0..self.amps.len() {
+                    if (i & t_mask == 0) && (i & c_mask == c_mask) {
+                        self.amps[i | t_mask] *= z;
+                    }
+                }
+            },
+            Gate::X => {
+                for i in 0..self.amps.len() {
+                    if (i & t_mask == 0) && (i & c_mask == c_mask) {
+                        self.amps.swap(i, i | t_mask);
+                    }
+                }
+            },
+            Gate::Y => {
+                let img = Complex64::new(0.0, 1.0);
+                let img_conj = img.conj();
+                for i in 0..self.amps.len() {
+                    if (i & t_mask == 0) && (i & c_mask == c_mask) {
+                        self.amps.swap(i, i | t_mask);
+                        self.amps[i] *= img_conj;
+                        self.amps[i | t_mask] *= img;
+                    }
+                }
+            },
+            Gate::Z => {
+                for i in 0..self.amps.len() {
+                    if (i & t_mask == 0) && (i & c_mask == c_mask) {
+                        self.amps[i | t_mask] = self.amps[i | t_mask].scale(-1.0);
+                    }
+                }
+            },
+            _ => {
+                let u = g.create_gate();
+                for i in 0..self.amps.len() {
+                    if (i & t_mask == 0) && (i & c_mask == c_mask) {
+                        let (a0, a1) = (self.amps[i], self.amps[i | t_mask]);
+                        self.amps[i]        = u[0][0] * a0 + u[0][1] * a1;
+                        self.amps[i | t_mask] = u[1][0] * a0 + u[1][1] * a1;
+                    }
+                }
+            }
+        }
+    }
+    /// Applies the gate `g` to target qubit `t`.
     /// # Examples
     /// ```
     /// // Applying a Hadamard gate to a single qubit.
@@ -102,75 +173,11 @@ impl StateVector {
     /// sv.apply_1q(0, Gate::H);
     /// assert_eq!(*sv.amplitudes(), vec![Complex64::new(FRAC_1_SQRT_2, 0.0); 2]);
     /// ```
-    pub fn apply_1q(&mut self, q: usize, g: Gate) {
-        assert!(q <= self.n, "Only {0} qubits in system", self.n);
-        let mask = 1usize << q;
-        // Fast paths and general path
-        match g {
-            Gate::RZ(theta) => {
-                let z = Complex64::new(0.0, theta / 2.0).exp();
-                let z_c = z.conj();
-                for i in 0..self.amps.len() {
-                    if i & mask == 0 {
-                        self.amps[i] *= z_c;
-                        self.amps[i | mask] *= z;
-                    }
-                }
-            }
-            Gate::S => {
-                let img = Complex64::new(0.0, 1.0);
-                for i in 0..self.amps.len() {
-                    if i & mask == 0 {
-                        self.amps[i | mask] *= img;
-                    }
-                }
-            },
-            Gate::T => {
-                let z = Complex64::new(0.0, PI/4.0).exp();
-                for i in 0..self.amps.len() {
-                    if i & mask == 0 {
-                        self.amps[i | mask] *= z;
-                    }
-                }
-            },
-            Gate::X => {
-                for i in 0..self.amps.len() {
-                    if i & mask == 0 {
-                        self.amps.swap(i, i | mask);
-                    }
-                }
-            },
-            Gate::Y => {
-                let img = Complex64::new(0.0, 1.0);
-                let img_conj = img.conj();
-                for i in 0..self.amps.len() {
-                    if i & mask == 0 {
-                        self.amps.swap(i, i | mask);
-                        self.amps[i] *= img_conj;
-                        self.amps[i | mask] *= img;
-                    }
-                }
-            },
-            Gate::Z => {
-                for i in 0..self.amps.len() {
-                    if i & mask == 0 {
-                        self.amps[i | mask] = self.amps[i | mask].scale(-1.0);
-                    }
-                }
-            },
-            _ => {
-                let u = g.create_gate();
-                for i in 0..self.amps.len() {
-                    if i & mask == 0 {
-                        let (a0, a1) = (self.amps[i], self.amps[i | mask]);
-                        self.amps[i]        = u[0][0] * a0 + u[0][1] * a1;
-                        self.amps[i | mask] = u[1][0] * a0 + u[1][1] * a1;
-                    }
-                }
-            }
-        }
+    pub fn apply_1q(&mut self, t: usize, g: Gate) {
+        self.apply_1q_masked(t, 0, g);
     }
-    /// Applies the 1-qubit gate `u` to target qubit `t` if control qubits `c`
+
+    /// Applies the 1-qubit gate `g` to target qubit `t` if control qubits `c`
     /// are all 1 else does nothing.
     /// # Examples
     /// ```
@@ -216,25 +223,17 @@ impl StateVector {
     /// assert!(amp_diff < 1e-15);
     /// ```
     pub fn controlled_gate(&mut self, c: Vec<usize>, t: usize, g: Gate) {
-        assert!(t <= self.n, "Only {0} qubits in system", self.n);
+        assert!(t < self.n, "Only {0} qubits in system", self.n);
         for i in c.iter() {
             assert!(*i != t, "Control qubit must differ from target qubit");
-            assert!(*i <= self.n, "Only {0} qubits in system", self.n);
+            assert!(*i < self.n, "Only {0} qubits in system", self.n);
         }
-        let c_mask: usize = c.iter().map(|i| 1usize << i).sum();
-        let t_mask = 1usize << t;
-        let u = g.create_gate();
-        for i in 0..self.amps.len() {
-            if (i & c_mask == c_mask) && (i & t_mask == 0) {
-                let (a0, a1) = (self.amps[i], self.amps[i | t_mask]);
-                self.amps[i]          = u[0][0] * a0 + u[0][1] * a1;
-                self.amps[i | t_mask] = u[1][0] * a0 + u[1][1] * a1;
-            }
-        }
+        let c_mask: usize = c.iter().fold(0, |m, &i| m | 1 << i);
+        self.apply_1q_masked(t, c_mask, g);
     }
 
     pub fn swap(&mut self, q1: usize, q2: usize) {
-        assert!(q1 <= self.n && q2 <= self.n, "Only {0} qubits in system", self.n);
+        assert!(q1 < self.n && q2 < self.n, "Only {0} qubits in system", self.n);
         assert!(q1 != q2, "Qubit can't be swapped with itself");
         let q1_mask = 1usize << q1;
         let q2_mask = 1usize << q2;
