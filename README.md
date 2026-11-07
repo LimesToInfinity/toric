@@ -35,7 +35,7 @@ correction codes through an elegant API and UI.
 
 - [x] State vector representation (`StateVector`, little-endian qubit order)
 - [x] Projective Z-basis measurement with seeds
-- [ ] Gate set: Paulis, H, S, T, rotations, CNOT, CZ with exact fast paths
+- [x] Gate set: Paulis, S, T, RZ with exact fast paths
 - [ ] 3-qubit repetition code with syndrome extraction
 - [ ] Pauli noise channels and logical error rate experiments
 - [ ] Pauli strings in symplectic representation
