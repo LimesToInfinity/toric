@@ -1,5 +1,7 @@
 // Quantum teleportation for Hadamard state 1/sqrt(2) * (|0> + |1>)
 use num_complex::Complex64;
+use rand_chacha::ChaCha8Rng;
+use rand_chacha::rand_core::SeedableRng;
 use std::f64::consts::FRAC_1_SQRT_2;
 use toric_core::StateVector;
 use toric_core::gates::Gate;
@@ -20,12 +22,14 @@ fn main() {
     // 1/sqrt(2)^3 (|00> (|0> - |1>) + |10> (|0> + |1>) + |01> (|1> - |0>) + |11> (|0> + |1>))
     sv.apply_1q(0, Gate::H);
 
+    let mut rng = ChaCha8Rng::seed_from_u64(349_021);
+
     // Apply X gate if result of measuring qubit_1 = 1 (true), else do nothing.
-    if sv.measure(1, 349_021) {
+    if sv.measure(1, &mut rng) {
         sv.apply_1q(2, Gate::X);
     }
     // Apply Z gate if result of measuring qubit_0 = 1 (true), else do nothing.
-    if sv.measure(0, 234_904) {
+    if sv.measure(0, &mut rng) {
         sv.apply_1q(2, Gate::Z);
     }
 

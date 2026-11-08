@@ -3,8 +3,6 @@
 //! The state vector structure convention used within Toric is little Endian.
 
 use num_complex::Complex64;
-use rand_chacha::ChaCha8Rng;
-use rand_chacha::rand_core::SeedableRng;
 use rand_core::Rng;
 use std::f64::consts::PI;
 
@@ -51,25 +49,24 @@ impl StateVector {
 
     /// Measures qubit `q` in the Z-Basis and uses a random `seed` to collapse
     /// the state. Renormalizes the other states afterwards.
-    pub fn measure(&mut self, q: usize, seed: u64) -> bool {
+    pub fn measure(&mut self, q: usize, rng: &mut impl Rng) -> bool {
         assert!(q < self.n, "Only {0} qubits in system", self.n);
         let mask = 1usize << q;
-        // Probability to measure qubit q in state 1
-        let p1: f64 = self
-            .amps
-            .iter()
-            .enumerate()
-            .filter(|(i, _)| i & mask != 0)
-            .map(|(_, a)| a.norm_sqr())
-            .sum();
-        let mut chacha_prng = ChaCha8Rng::seed_from_u64(seed);
-        let mut k = (chacha_prng.next_u64() >> 11) as f64;
-        let norm = (1u64 << 53) as f64;
-        k /= norm;
+        // Probability of measuring qubit q in state 0 (p0) and 1 (p1).
+        let (mut p0, mut p1) = (0.0, 0.0);
+        for (i, a) in self.amps.iter().enumerate() {
+            if i & mask == 0 {
+                p0 += a.norm_sqr()
+            } else {
+                p1 += a.norm_sqr()
+            }
+        }
+        let k = (rng.next_u64() >> 11) as f64 / (1u64 << 53) as f64;
         // true: measured 1, false: measured 0
-        let outcome = p1 > k;
+        // divide by (p0 + p1) to decrease rounding errors.
+        let outcome = k < p1 / (p0 + p1);
+        let renorm = if outcome { p1 } else { p0 }.sqrt();
         if outcome {
-            let renorm = p1.sqrt();
             for i in 0..self.amps.len() {
                 if i & mask == 0 {
                     self.amps[i] = Complex64::new(0.0, 0.0);
@@ -78,7 +75,6 @@ impl StateVector {
                 }
             }
         } else {
-            let renorm = (1.0 - p1).sqrt();
             for i in 0..self.amps.len() {
                 if i & mask == 0 {
                     self.amps[i] /= renorm;
@@ -236,6 +232,8 @@ impl StateVector {
 #[cfg(test)]
 mod test {
     use super::*;
+    use rand_chacha::ChaCha8Rng;
+    use rand_chacha::rand_core::SeedableRng;
     use std::f64::consts::{FRAC_1_SQRT_2, PI};
 
     #[test]
@@ -414,7 +412,8 @@ mod test {
         let mut sv = StateVector::new(2);
         sv.apply_1q(0, Gate::H);
         sv.apply_1q(1, Gate::H);
-        let result = sv.measure(1, 40_317);
+        let mut rng = ChaCha8Rng::seed_from_u64(40_317);
+        let result = sv.measure(1, &mut rng);
         assert!(result);
     }
 }
