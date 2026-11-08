@@ -30,13 +30,21 @@ fn main() {
     }
 
     let check_amplitudes = vec![
-        Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0),
-        FRAC_1_SQRT_2 * Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0),
-        Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0),
-        -FRAC_1_SQRT_2 * Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)];
+        Complex64::new(0.0, 0.0),
+        Complex64::new(0.0, 0.0),
+        FRAC_1_SQRT_2 * Complex64::new(1.0, 0.0),
+        Complex64::new(0.0, 0.0),
+        Complex64::new(0.0, 0.0),
+        Complex64::new(0.0, 0.0),
+        -FRAC_1_SQRT_2 * Complex64::new(1.0, 0.0),
+        Complex64::new(0.0, 0.0),
+    ];
 
-    let amp_diff: f64 = check_amplitudes.into_iter().enumerate()
-                .map(|(i, x)| (x - sv.amplitudes()[i]).norm()).sum();
+    let amp_diff: f64 = check_amplitudes
+        .into_iter()
+        .enumerate()
+        .map(|(i, x)| (x - sv.amplitudes()[i]).norm())
+        .sum();
 
     assert!(amp_diff < 1e-15, "teleportation failed, diff = {amp_diff}");
     println!("Teleportation succeeded: {:?}", sv.amplitudes());

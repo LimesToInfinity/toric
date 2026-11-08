@@ -22,7 +22,7 @@ pub struct StateVector {
 impl StateVector {
     pub const MAX_QUBITS: usize = 30;
 
-    /// Creates a new `StateVector` with `n` qubits and sets amplitude at 
+    /// Creates a new `StateVector` with `n` qubits and sets amplitude at
     /// `index` to `1`.
     pub fn basis(n: usize, index: usize) -> Self {
         assert!(n <= Self::MAX_QUBITS, "Too many qubits: {n}");
@@ -43,7 +43,7 @@ impl StateVector {
         &self.amps
     }
 
-    /// Creates a new `StateVector` with `n` qubits and probability of `1` for 
+    /// Creates a new `StateVector` with `n` qubits and probability of `1` for
     /// the state `|0...0>`.
     pub fn new(n: usize) -> Self {
         Self::basis(n, 0)
@@ -55,7 +55,10 @@ impl StateVector {
         assert!(q < self.n, "Only {0} qubits in system", self.n);
         let mask = 1usize << q;
         // Probability to measure qubit q in state 1
-        let p1: f64 = self.amps.iter().enumerate()
+        let p1: f64 = self
+            .amps
+            .iter()
+            .enumerate()
             .filter(|(i, _)| i & mask != 0)
             .map(|(_, a)| a.norm_sqr())
             .sum();
@@ -70,19 +73,16 @@ impl StateVector {
             for i in 0..self.amps.len() {
                 if i & mask == 0 {
                     self.amps[i] = Complex64::new(0.0, 0.0);
-                }
-                else {
+                } else {
                     self.amps[i] /= renorm;
                 }
             }
-        }
-        else {
+        } else {
             let renorm = (1.0 - p1).sqrt();
             for i in 0..self.amps.len() {
                 if i & mask == 0 {
                     self.amps[i] /= renorm;
-                }
-                else {
+                } else {
                     self.amps[i] = Complex64::new(0.0, 0.0);
                 }
             }
@@ -115,22 +115,22 @@ impl StateVector {
                         self.amps[i | t_mask] *= img;
                     }
                 }
-            },
+            }
             Gate::T => {
-                let z = Complex64::new(0.0, PI/4.0).exp();
+                let z = Complex64::new(0.0, PI / 4.0).exp();
                 for i in 0..self.amps.len() {
                     if (i & t_mask == 0) && (i & c_mask == c_mask) {
                         self.amps[i | t_mask] *= z;
                     }
                 }
-            },
+            }
             Gate::X => {
                 for i in 0..self.amps.len() {
                     if (i & t_mask == 0) && (i & c_mask == c_mask) {
                         self.amps.swap(i, i | t_mask);
                     }
                 }
-            },
+            }
             Gate::Y => {
                 let img = Complex64::new(0.0, 1.0);
                 let img_conj = img.conj();
@@ -141,20 +141,20 @@ impl StateVector {
                         self.amps[i | t_mask] *= img;
                     }
                 }
-            },
+            }
             Gate::Z => {
                 for i in 0..self.amps.len() {
                     if (i & t_mask == 0) && (i & c_mask == c_mask) {
                         self.amps[i | t_mask] = self.amps[i | t_mask].scale(-1.0);
                     }
                 }
-            },
+            }
             _ => {
                 let u = g.create_gate();
                 for i in 0..self.amps.len() {
                     if (i & t_mask == 0) && (i & c_mask == c_mask) {
                         let (a0, a1) = (self.amps[i], self.amps[i | t_mask]);
-                        self.amps[i]        = u[0][0] * a0 + u[0][1] * a1;
+                        self.amps[i] = u[0][0] * a0 + u[0][1] * a1;
                         self.amps[i | t_mask] = u[1][0] * a0 + u[1][1] * a1;
                     }
                 }
@@ -217,7 +217,11 @@ impl StateVector {
     }
 
     pub fn swap(&mut self, q1: usize, q2: usize) {
-        assert!(q1 < self.n && q2 < self.n, "Only {0} qubits in system", self.n);
+        assert!(
+            q1 < self.n && q2 < self.n,
+            "Only {0} qubits in system",
+            self.n
+        );
         assert!(q1 != q2, "Qubit can't be swapped with itself");
         let q1_mask = 1usize << q1;
         let q2_mask = 1usize << q2;
@@ -226,23 +230,22 @@ impl StateVector {
                 self.amps.swap(i, (i | q1_mask) ^ q2_mask);
             }
         }
-        
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::f64::consts::{PI, FRAC_1_SQRT_2};
+    use std::f64::consts::{FRAC_1_SQRT_2, PI};
 
     #[test]
     fn fast_paths_rz() {
         let mut sv = StateVector::new(2);
         sv.amps = vec![
-            Complex64::new(1.0 / 2.0, 0.0)
-            , Complex64::new(1.0 / 2.0, 0.0)
-            , Complex64::new(1.0 / 2.0, 0.0)
-            , Complex64::new(1.0 / 2.0, 0.0)
+            Complex64::new(1.0 / 2.0, 0.0),
+            Complex64::new(1.0 / 2.0, 0.0),
+            Complex64::new(1.0 / 2.0, 0.0),
+            Complex64::new(1.0 / 2.0, 0.0),
         ];
         sv.apply_1q(0, Gate::RZ(PI));
         let sv_check = vec![
@@ -251,9 +254,12 @@ mod test {
             Complex64::new(0.0, -1.0 / 2.0),
             Complex64::new(0.0, 1.0 / 2.0),
         ];
-        let amp_diff: f64 = sv_check.into_iter().enumerate()
-                    .map(|(i, x)| (x - sv.amplitudes()[i]).norm()).sum();
-       
+        let amp_diff: f64 = sv_check
+            .into_iter()
+            .enumerate()
+            .map(|(i, x)| (x - sv.amplitudes()[i]).norm())
+            .sum();
+
         assert!(amp_diff < 1e-15);
     }
 
@@ -261,10 +267,10 @@ mod test {
     fn fast_paths_s() {
         let mut sv = StateVector::new(2);
         sv.amps = vec![
-            Complex64::new(1.0 / 2.0, 0.0)
-            , Complex64::new(1.0 / 2.0, 0.0)
-            , Complex64::new(1.0 / 2.0, 0.0)
-            , Complex64::new(1.0 / 2.0, 0.0)
+            Complex64::new(1.0 / 2.0, 0.0),
+            Complex64::new(1.0 / 2.0, 0.0),
+            Complex64::new(1.0 / 2.0, 0.0),
+            Complex64::new(1.0 / 2.0, 0.0),
         ];
         sv.apply_1q(0, Gate::S);
         let sv_check = vec![
@@ -280,10 +286,10 @@ mod test {
     fn fast_paths_t() {
         let mut sv = StateVector::new(2);
         sv.amps = vec![
-            Complex64::new(1.0 / 2.0, 0.0)
-            , Complex64::new(1.0 / 2.0, 0.0)
-            , Complex64::new(1.0 / 2.0, 0.0)
-            , Complex64::new(1.0 / 2.0, 0.0)
+            Complex64::new(1.0 / 2.0, 0.0),
+            Complex64::new(1.0 / 2.0, 0.0),
+            Complex64::new(1.0 / 2.0, 0.0),
+            Complex64::new(1.0 / 2.0, 0.0),
         ];
         sv.apply_1q(0, Gate::T);
         let sv_check = vec![
@@ -299,10 +305,10 @@ mod test {
     fn fast_paths_x() {
         let mut sv = StateVector::new(2);
         sv.amps = vec![
-            Complex64::new(-1.0 / 2.0, 0.0)
-            , Complex64::new(1.0 / 2.0, 0.0)
-            , Complex64::new(-1.0 / 2.0, 0.0)
-            , Complex64::new(1.0 / 2.0, 0.0)
+            Complex64::new(-1.0 / 2.0, 0.0),
+            Complex64::new(1.0 / 2.0, 0.0),
+            Complex64::new(-1.0 / 2.0, 0.0),
+            Complex64::new(1.0 / 2.0, 0.0),
         ];
         sv.apply_1q(0, Gate::X);
         let sv_check = vec![
@@ -318,10 +324,10 @@ mod test {
     fn fast_paths_y() {
         let mut sv = StateVector::new(2);
         sv.amps = vec![
-            Complex64::new(1.0 / 2.0, 0.0)
-            , Complex64::new(-1.0 / 2.0, 0.0)
-            , Complex64::new(1.0 / 2.0, 0.0)
-            , Complex64::new(-1.0 / 2.0, 0.0)
+            Complex64::new(1.0 / 2.0, 0.0),
+            Complex64::new(-1.0 / 2.0, 0.0),
+            Complex64::new(1.0 / 2.0, 0.0),
+            Complex64::new(-1.0 / 2.0, 0.0),
         ];
         sv.apply_1q(0, Gate::Y);
         let sv_check = vec![
@@ -337,10 +343,10 @@ mod test {
     fn fast_paths_z() {
         let mut sv = StateVector::new(2);
         sv.amps = vec![
-            Complex64::new(1.0 / 2.0, 0.0)
-            , Complex64::new(-1.0 / 2.0, 0.0)
-            , Complex64::new(1.0 / 2.0, 0.0)
-            , Complex64::new(-1.0 / 2.0, 0.0)
+            Complex64::new(1.0 / 2.0, 0.0),
+            Complex64::new(-1.0 / 2.0, 0.0),
+            Complex64::new(1.0 / 2.0, 0.0),
+            Complex64::new(-1.0 / 2.0, 0.0),
         ];
         sv.apply_1q(0, Gate::Z);
         let sv_check = vec![
@@ -371,7 +377,7 @@ mod test {
         sv.controlled_gate(&[0], 1, Gate::X);
         assert!(sv.amps == controlled_not_sv.amps);
     }
-    
+
     #[test]
     fn toffoli() {
         let mut sv = StateVector::new(3);
@@ -388,11 +394,11 @@ mod test {
             Complex64::new(0.0, 0.0),
             Complex64::new(0.0, 0.0),
             Complex64::new(0.0, 0.0),
-            Complex64::new(FRAC_1_SQRT_2, 0.0)
+            Complex64::new(FRAC_1_SQRT_2, 0.0),
         ];
         assert!(sv.amps == check_amps);
     }
-    
+
     #[test]
     fn swap() {
         let mut sv = StateVector::basis(5, 1);
