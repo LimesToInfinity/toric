@@ -1,6 +1,7 @@
 use num_complex::Complex64;
 use std::f64::consts::{PI, FRAC_1_SQRT_2};
 
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Gate {
     /// Hadamard gate
     H,

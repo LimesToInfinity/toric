@@ -93,7 +93,7 @@ impl StateVector {
     /// Apply gate `g` to qubit `t` respecting the control mask `c_mask` built
     /// from control qubits. The control mask represents which qubits have to
     /// be in state `1` for the gate to be applied.
-    pub fn apply_1q_masked(&mut self, t: usize, c_mask: usize, g: Gate) {
+    fn apply_1q_masked(&mut self, t: usize, c_mask: usize, g: Gate) {
         assert!(t < self.n, "Only {0} qubits in system", self.n);
         let t_mask = 1usize << t;
         // Fast paths and general path
@@ -196,9 +196,9 @@ impl StateVector {
     /// // 1/2 (|0> - |1>)(|00> + |10>)
     /// sv.apply_1q(1, Gate::H);
     /// // 1/2 (|0> - |1>)(|00> + |11>)
-    /// sv.controlled_gate(vec![1], 2, Gate::X);
+    /// sv.controlled_gate(&[1], 2, Gate::X);
     /// // 1/2 (|0> (|00> + |11>) - |1> (|10> + |01>))
-    /// sv.controlled_gate(vec![0], 1, Gate::X);
+    /// sv.controlled_gate(&[0], 1, Gate::X);
     /// // 1/sqrt(2)^3 (|00> (|0> - |1>) + |10> (|0> + |1>) + |01> (|1> - |0>) + |11> (|0> + |1>))
     /// sv.apply_1q(0, Gate::H);
     ///
@@ -222,7 +222,7 @@ impl StateVector {
     ///
     /// assert!(amp_diff < 1e-15);
     /// ```
-    pub fn controlled_gate(&mut self, c: Vec<usize>, t: usize, g: Gate) {
+    pub fn controlled_gate(&mut self, c: &[usize], t: usize, g: Gate) {
         assert!(t < self.n, "Only {0} qubits in system", self.n);
         for i in c.iter() {
             assert!(*i != t, "Control qubit must differ from target qubit");
@@ -384,7 +384,7 @@ mod test {
     fn cnot() {
         let mut sv = StateVector::basis(5, 1);
         let controlled_not_sv = StateVector::basis(5, 3);
-        sv.controlled_gate(vec![0], 1, Gate::X);
+        sv.controlled_gate(&[0], 1, Gate::X);
         assert!(sv.amps == controlled_not_sv.amps);
     }
     
@@ -392,9 +392,9 @@ mod test {
     fn toffoli() {
         let mut sv = StateVector::new(3);
         sv.apply_1q(0, Gate::H);
-        sv.controlled_gate(vec![0], 1, Gate::X);
+        sv.controlled_gate(&[0], 1, Gate::X);
         // Toffoli gate
-        sv.controlled_gate(vec![0, 1], 2, Gate::X);
+        sv.controlled_gate(&[0, 1], 2, Gate::X);
 
         let check_amps = vec![
             Complex64::new(FRAC_1_SQRT_2, 0.0),
