@@ -70,7 +70,12 @@ pub(crate) fn apply_1q_masked(amps: &mut [Complex64], t_mask: usize, c_mask: usi
 /// the control qubits (c_mask). The more control qubits |C| the bigger the
 /// reduction. Instead of iterating through 2^n, it only iterates through
 /// 2^(n - |C|) amplitudes.
-fn fast_iteration(n: usize, t_mask: usize, c_mask: usize, mut apply_gate: impl FnMut(usize, usize)) {
+fn fast_iteration(
+    n: usize,
+    t_mask: usize,
+    c_mask: usize,
+    mut apply_gate: impl FnMut(usize, usize),
+) {
     let f = usize::MAX ^ c_mask ^ t_mask;
     let mut s = 0;
     loop {
