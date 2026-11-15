@@ -3,8 +3,8 @@ use num_complex::Complex64;
 use rand_chacha::ChaCha8Rng;
 use rand_chacha::rand_core::SeedableRng;
 use std::f64::consts::FRAC_1_SQRT_2;
-use toric_core::StateVector;
 use toric_core::gates::Gate;
+use toric_core::state::StateVector;
 
 fn main() {
     // |000>
